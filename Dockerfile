@@ -1,29 +1,31 @@
-FROM golang:1.12 as build
+FROM cr.loongnix.cn/library/golang:1.19 as build
 
 ENV GO111MODULE on
-ENV GOPROXY "https://goproxy.io"
+ENV GOPROXY "https://goproxy.cn"
 
 WORKDIR /opt
 RUN mkdir etcdkeeper
-ADD . /opt/etcdkeeper
+COPY . /opt/etcdkeeper
 WORKDIR /opt/etcdkeeper/src/etcdkeeper
 
 RUN go mod download \
-    && go build -o etcdkeeper.bin main.go
+    && go get -u golang.org/x/sys/unix  \
+    && go mod tidy \
+    && go build -a -ldflags '-extldflags "-static"' -o etcdkeeper.bin main.go
 
 
-FROM alpine:3.10
+FROM cr.loongnix.cn/library/alpine:3.11
 
 ENV HOST="0.0.0.0"
 ENV PORT="8080"
 
 # RUN apk add --no-cache ca-certificates
 
-RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
+RUN mkdir /lib64 && ln -s /lib/libc.musl-loongarch64.so.1 /lib64/ld-linux-loongarch64.so.2
 
 WORKDIR /opt/etcdkeeper
 COPY --from=build /opt/etcdkeeper/src/etcdkeeper/etcdkeeper.bin .
-ADD assets assets
+COPY assets assets
 
 EXPOSE ${PORT}
 
